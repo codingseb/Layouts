@@ -9,6 +9,7 @@
     <Description>Some useful Layouts for WPF projects</Description>
     <RepositoryUrl>https://github.com/codingseb/Layouts</RepositoryUrl>
     <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
+    <Company />
   </PropertyGroup>
 
   <ItemGroup>

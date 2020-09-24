@@ -10,6 +10,8 @@
     <RepositoryUrl>https://github.com/codingseb/Layouts</RepositoryUrl>
     <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
     <Company />
+    <Version>1.0.1</Version>
+    <PackageReleaseNotes>* Correction of cellskips when multiple consecutive RowSpan or ColumnSpan</PackageReleaseNotes>
   </PropertyGroup>
 
   <ItemGroup>

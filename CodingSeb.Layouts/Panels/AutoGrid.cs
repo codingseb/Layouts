@@ -3,6 +3,9 @@
 // Licence    : MIT (https://github.com/SpicyTaco/SpicyTaco.AutoGrid/blob/master/license)
 // Refactored : CodingSeb
 // Remark     : Include in this project to make it accessible without namespace
+// ----------------------------------------------------------------------------------------------------
+// | 24.09.2020 | CodingSeb | Correction of cellskips when multiple consecutive RowSpan or ColumnSpan |
+// ----------------------------------------------------------------------------------------------------
 //*****************************************************************************************************
 
 using System;
@@ -455,7 +458,7 @@ namespace CodingSeb.Layouts
                 {
                     if (IsAutoIndexing && GetAutoIndex(child))
                     {
-                        if (cellsToSkip.Count > 0 && cellsToSkip.Peek() == cellPosition)
+                        while (cellsToSkip.Count > 0 && cellsToSkip.Peek() == cellPosition)
                         {
                             cellsToSkip.Dequeue();
                             cellPosition++;
@@ -472,7 +475,7 @@ namespace CodingSeb.Layouts
                             var rowSpan = GetRowSpan(child);
                             if (rowSpan > 1)
                             {
-                                Enumerable.Range(1, rowSpan).ToList()
+                                Enumerable.Range(1, rowSpan - 1).ToList()
                                     .ForEach(x => cellsToSkip.Enqueue(cellPosition + (ColumnDefinitions.Count * x)));
                             }
 
@@ -501,7 +504,7 @@ namespace CodingSeb.Layouts
                             var columnSpan = GetColumnSpan(child);
                             if (columnSpan > 1)
                             {
-                                Enumerable.Range(1, columnSpan).ToList()
+                                Enumerable.Range(1, columnSpan - 1).ToList()
                                     .ForEach(x => cellsToSkip.Enqueue(cellPosition + (RowDefinitions.Count * x)));
                             }
 

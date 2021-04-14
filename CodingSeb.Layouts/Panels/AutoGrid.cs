@@ -6,6 +6,9 @@
 // ----------------------------------------------------------------------------------------------------
 // | 24.09.2020 | CodingSeb | Correction of cellskips when multiple consecutive RowSpan or ColumnSpan |
 // ----------------------------------------------------------------------------------------------------
+// | 13.04.2021 | CodingSeb | Add Management for RowsMinCount, ColumnsMinCount, RowsSharedSizeGroups  |
+// |            |           | and ColumnsSharedSizeGroups                                             |
+// ----------------------------------------------------------------------------------------------------
 //*****************************************************************************************************
 
 using System;
@@ -71,6 +74,27 @@ namespace CodingSeb.Layouts
         }
 
         /// <summary>
+        /// Gets or sets the minimum columns count to create in the grid.
+        /// Dfault value is 1
+        /// </summary>
+        [Category("Layout"), Description("Defines the minimum columns count to have in the grid")]
+        public int ColumnsMinCount
+        {
+            get { return (int)GetValue(ColumnsMinCountProperty); }
+            set { SetValue(ColumnsMinCountProperty, value); }
+        }
+
+        /// <summary>
+        /// Gets or sets the columns SharedSizeGroups
+        /// </summary>
+        [Category("Layout"), Description("Defines all columns using comma separated SharedSizeGroups, leave empty if to not set intermediate groups")]
+        public string ColumnsSharedSizeGroups
+        {
+            get { return (string)GetValue(ColumnsSharedSizeGroupsProperty); }
+            set { SetValue(ColumnsSharedSizeGroupsProperty, value); }
+        }
+
+        /// <summary>
         /// Gets or sets the fixed column width
         /// </summary>
         [Category("Layout"), Description("Presets the width of all columns set using the ColumnCount property")]
@@ -129,6 +153,27 @@ namespace CodingSeb.Layouts
             set { SetValue(RowsProperty, value); }
         }
 
+        /// <summary>
+        /// Gets or sets the minimum rows count to create in the grid.
+        /// Default value is 1
+        /// </summary>
+        [Category("Layout"), Description("Defines the minimum rows count to have in the grid")]
+        public int RowsMinCount
+        {
+            get { return (int)GetValue(RowsMinCountProperty); }
+            set { SetValue(RowsMinCountProperty, value); }
+        }
+
+        /// <summary>
+        /// Gets or sets the rows SharedSizeGroups
+        /// </summary>
+        [Category("Layout"), Description("Defines all rows using comma separated SharedSizeGroups, leave empty if to not set intermediate groups")]
+        public string RowsSharedSizeGroups
+        {
+            get { return (string)GetValue(RowsSharedSizeGroupsProperty); }
+            set { SetValue(RowsSharedSizeGroupsProperty, value); }
+        }
+
         // AutoIndex attached property
 
         public static readonly DependencyProperty AutoIndexProperty = DependencyProperty.RegisterAttached(
@@ -175,90 +220,42 @@ namespace CodingSeb.Layouts
         }
 
         /// <summary>
-        /// Handles the column count changed event
-        /// </summary>
-        public static void ColumnCountChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
-        {
-            if ((int)e.NewValue < 0)
-                return;
-
-            var grid = d as AutoGrid;
-
-            // look for an existing column definition for the height
-            var width = GridLength.Auto;
-            if (grid.ColumnDefinitions.Count > 0)
-            {
-                width = grid.ColumnDefinitions[0].Width;
-            }
-
-            // clear and rebuild
-            grid.ColumnDefinitions.Clear();
-            for (int i = 0; i < (int)e.NewValue; i++)
-            {
-                grid.ColumnDefinitions.Add(
-                    new ColumnDefinition()
-                    {
-                        Width = width
-                    });
-            }
-        }
-
-        /// <summary>
         /// Handle the columns changed event
         /// </summary>
         public static void ColumnsChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
         {
-            if (((string)e.NewValue)?.Length == 0)
-                return;
-
-            var grid = d as AutoGrid;
-            grid.ColumnDefinitions.Clear();
-
-            foreach (var def in Parse((string)e.NewValue))
+            if (d is AutoGrid grid)
             {
-                grid.ColumnDefinitions.Add(new ColumnDefinition()
-                {
-                    Width = def
-                });
+                grid.RefreshColumns();
+                grid.RefreshRows();
             }
         }
 
-        /// <summary>
-        /// Handle the fixed column width changed event
-        /// </summary>
-        public static void FixedColumnWidthChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
+        protected void RefreshColumns()
         {
-            var grid = d as AutoGrid;
+            ColumnDefinitions.Clear();
 
-            // add a default column if missing
-            if (grid.ColumnDefinitions.Count == 0)
-                grid.ColumnDefinitions.Add(new ColumnDefinition());
+            GridLength[] widths = Parse(Columns, ColumnWidth);
+            string[] groups = ColumnsSharedSizeGroups.Split(',');
 
-            // set all existing columns to this width
-            for (int i = 0; i < grid.ColumnDefinitions.Count; i++)
-                grid.ColumnDefinitions[i].Width = (GridLength)e.NewValue;
-        }
+            for (int i = 0; i < Math.Max(1, Math.Max(ColumnsMinCount, widths.Length)); i++)
+            {
+                var column = new ColumnDefinition()
+                {
+                    Width = widths.Length > i ? widths[i] : ColumnWidth,
+                };
 
-        /// <summary>
-        /// Handle the fixed row height changed event
-        /// </summary>
-        public static void FixedRowHeightChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
-        {
-            var grid = d as AutoGrid;
+                if (groups.Length > i && !string.IsNullOrWhiteSpace(groups[i]))
+                    column.SharedSizeGroup = groups[i].Trim();
 
-            // add a default row if missing
-            if (grid.RowDefinitions.Count == 0)
-                grid.RowDefinitions.Add(new RowDefinition());
-
-            // set all existing rows to this height
-            for (int i = 0; i < grid.RowDefinitions.Count; i++)
-                grid.RowDefinitions[i].Height = (GridLength)e.NewValue;
+                ColumnDefinitions.Add(column);
+            }
         }
 
         /// <summary>
         /// Parse an array of grid lengths from comma delim text
         /// </summary>
-        public static GridLength[] Parse(string text)
+        public static GridLength[] Parse(string text, GridLength defaultLength = default)
         {
             var tokens = text.Split(',');
             var definitions = new GridLength[tokens.Length];
@@ -285,36 +282,15 @@ namespace CodingSeb.Layouts
                 }
 
                 // auto
-                definitions[i] = GridLength.Auto;
+                if (str.Trim().Equals("auto", StringComparison.OrdinalIgnoreCase))
+                {
+                    definitions[i] = GridLength.Auto;
+                    continue;
+                }
+
+                definitions[i] = defaultLength;
             }
             return definitions;
-        }
-
-        /// <summary>
-        /// Handles the row count changed event
-        /// </summary>
-        public static void RowCountChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
-        {
-            if ((int)e.NewValue < 0)
-                return;
-
-            var grid = d as AutoGrid;
-
-            // look for an existing row to get the height
-            var height = GridLength.Auto;
-            if (grid.RowDefinitions.Count > 0)
-                height = grid.RowDefinitions[0].Height;
-
-            // clear and rebuild
-            grid.RowDefinitions.Clear();
-            for (int i = 0; i < (int)e.NewValue; i++)
-            {
-                grid.RowDefinitions.Add(
-                    new RowDefinition()
-                    {
-                        Height = height
-                    });
-            }
         }
 
         /// <summary>
@@ -322,18 +298,31 @@ namespace CodingSeb.Layouts
         /// </summary>
         public static void RowsChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
         {
-            if (((string)e.NewValue)?.Length == 0)
-                return;
-
-            var grid = d as AutoGrid;
-            grid.RowDefinitions.Clear();
-
-            foreach (var def in Parse((string)e.NewValue))
+            if (d is AutoGrid grid)
             {
-                grid.RowDefinitions.Add(new RowDefinition()
+                grid.RefreshRows();
+                grid.RefreshColumns();
+            }
+        }
+
+        protected void RefreshRows()
+        {
+            RowDefinitions.Clear();
+
+            GridLength[] heights = Parse(Rows, RowHeight);
+            string[] groups = RowsSharedSizeGroups.Split(',');
+
+            for (int i = 0; i < Math.Max(1, Math.Max(RowsMinCount, heights.Length)); i++)
+            {
+                var row = new RowDefinition()
                 {
-                    Height = def
-                });
+                    Height = heights.Length > i ? heights[i] : RowHeight,
+                };
+
+                if (groups.Length > i && !string.IsNullOrWhiteSpace(groups[i]))
+                    row.SharedSizeGroup = groups[i].Trim();
+
+                RowDefinitions.Add(row);
             }
         }
 
@@ -342,13 +331,15 @@ namespace CodingSeb.Layouts
         /// </summary>
         private static void OnChildHorizontalAlignmentChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
         {
-            var grid = d as AutoGrid;
-            foreach (UIElement child in grid.Children)
+            if (d is AutoGrid grid)
             {
-                if (grid.ChildHorizontalAlignment.HasValue)
-                    child.SetValue(HorizontalAlignmentProperty, grid.ChildHorizontalAlignment);
-                else
-                    child.SetValue(HorizontalAlignmentProperty, DependencyProperty.UnsetValue);
+                foreach (UIElement child in grid.Children)
+                {
+                    if (grid.ChildHorizontalAlignment.HasValue)
+                        child.SetValue(HorizontalAlignmentProperty, grid.ChildHorizontalAlignment);
+                    else
+                        child.SetValue(HorizontalAlignmentProperty, DependencyProperty.UnsetValue);
+                }
             }
         }
 
@@ -357,13 +348,15 @@ namespace CodingSeb.Layouts
         /// </summary>
         private static void OnChildMarginChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
         {
-            var grid = d as AutoGrid;
-            foreach (UIElement child in grid.Children)
+            if (d is AutoGrid grid)
             {
-                if (grid.ChildMargin.HasValue)
-                    child.SetValue(MarginProperty, grid.ChildMargin);
-                else
-                    child.SetValue(MarginProperty, DependencyProperty.UnsetValue);
+                foreach (UIElement child in grid.Children)
+                {
+                    if (grid.ChildMargin.HasValue)
+                        child.SetValue(MarginProperty, grid.ChildMargin);
+                    else
+                        child.SetValue(MarginProperty, DependencyProperty.UnsetValue);
+                }
             }
         }
 
@@ -372,13 +365,15 @@ namespace CodingSeb.Layouts
         /// </summary>
         private static void OnChildVerticalAlignmentChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
         {
-            var grid = d as AutoGrid;
-            foreach (UIElement child in grid.Children)
+            if (d is AutoGrid grid)
             {
-                if (grid.ChildVerticalAlignment.HasValue)
-                    child.SetValue(VerticalAlignmentProperty, grid.ChildVerticalAlignment);
-                else
-                    child.SetValue(VerticalAlignmentProperty, DependencyProperty.UnsetValue);
+                foreach (UIElement child in grid.Children)
+                {
+                    if (grid.ChildVerticalAlignment.HasValue)
+                        child.SetValue(VerticalAlignmentProperty, grid.ChildVerticalAlignment);
+                    else
+                        child.SetValue(VerticalAlignmentProperty, DependencyProperty.UnsetValue);
+                }
             }
         }
 
@@ -387,18 +382,21 @@ namespace CodingSeb.Layouts
         /// </summary>
         private static void OnPropertyChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
         {
-            ((AutoGrid)d).shouldReindex = true;
+            if (d is AutoGrid grid)
+            {
+                grid.shouldReIndex = true;
+            }
         }
 
         public void PerformLayout()
         {
             bool isVertical = Orientation == Orientation.Vertical;
 
-            if (shouldReindex || (IsAutoIndexing
+            if (shouldReIndex || (IsAutoIndexing
                 && ((isVertical && rowOrColumnCount != ColumnDefinitions.Count)
                 || (!isVertical && rowOrColumnCount != RowDefinitions.Count))))
             {
-                shouldReindex = false;
+                shouldReIndex = false;
 
                 if (IsAutoIndexing)
                 {
@@ -425,6 +423,7 @@ namespace CodingSeb.Layouts
                             {
                                 Height = RowHeight
                             };
+
                             RowDefinitions.Add(rowDefinition);
                         }
                         if (RowDefinitions.Count > newRowCount)
@@ -441,7 +440,6 @@ namespace CodingSeb.Layouts
                             {
                                 Width = ColumnWidth
                             };
-
                             ColumnDefinitions.Add(columnDefinition);
                         }
                         if (ColumnDefinitions.Count > newColumnCount)
@@ -561,7 +559,20 @@ namespace CodingSeb.Layouts
 
         public static readonly DependencyProperty ColumnsProperty =
             DependencyProperty.RegisterAttached("Columns", typeof(string), typeof(AutoGrid),
-                new FrameworkPropertyMetadata("",
+                new FrameworkPropertyMetadata(string.Empty,
+                    FrameworkPropertyMetadataOptions.AffectsMeasure | FrameworkPropertyMetadataOptions.AffectsArrange,
+                    new PropertyChangedCallback(ColumnsChanged)));
+
+        // Using a DependencyProperty as the backing store for MinColumnsCount.  This enables animation, styling, binding, etc...
+        public static readonly DependencyProperty ColumnsMinCountProperty =
+            DependencyProperty.Register("ColumnsMinCount", typeof(int), typeof(AutoGrid),
+                new FrameworkPropertyMetadata(1,
+                    FrameworkPropertyMetadataOptions.AffectsMeasure | FrameworkPropertyMetadataOptions.AffectsArrange,
+                    new PropertyChangedCallback(ColumnsChanged)));
+
+        public static readonly DependencyProperty ColumnsSharedSizeGroupsProperty =
+            DependencyProperty.RegisterAttached("ColumnsSharedSizeGroups", typeof(string), typeof(AutoGrid),
+                new FrameworkPropertyMetadata(string.Empty,
                     FrameworkPropertyMetadataOptions.AffectsMeasure | FrameworkPropertyMetadataOptions.AffectsArrange,
                     new PropertyChangedCallback(ColumnsChanged)));
 
@@ -569,7 +580,7 @@ namespace CodingSeb.Layouts
             DependencyProperty.RegisterAttached("ColumnWidth", typeof(GridLength), typeof(AutoGrid),
                 new FrameworkPropertyMetadata(GridLength.Auto,
                     FrameworkPropertyMetadataOptions.AffectsMeasure | FrameworkPropertyMetadataOptions.AffectsArrange,
-                    new PropertyChangedCallback(FixedColumnWidthChanged)));
+                    new PropertyChangedCallback(ColumnsChanged)));
 
         public static readonly DependencyProperty IsAutoIndexingProperty =
             DependencyProperty.Register("IsAutoIndexing", typeof(bool), typeof(AutoGrid),
@@ -587,15 +598,29 @@ namespace CodingSeb.Layouts
             DependencyProperty.RegisterAttached("RowHeight", typeof(GridLength), typeof(AutoGrid),
                 new FrameworkPropertyMetadata(GridLength.Auto,
                     FrameworkPropertyMetadataOptions.AffectsMeasure | FrameworkPropertyMetadataOptions.AffectsArrange,
-                    new PropertyChangedCallback(FixedRowHeightChanged)));
+                    new PropertyChangedCallback(RowsChanged)));
 
         public static readonly DependencyProperty RowsProperty =
             DependencyProperty.RegisterAttached("Rows", typeof(string), typeof(AutoGrid),
-                new FrameworkPropertyMetadata("",
+                new FrameworkPropertyMetadata(string.Empty,
                     FrameworkPropertyMetadataOptions.AffectsMeasure | FrameworkPropertyMetadataOptions.AffectsArrange,
                     new PropertyChangedCallback(RowsChanged)));
 
-        private bool shouldReindex = true;
+        // Using a DependencyProperty as the backing store for MinRowsCount.  This enables animation, styling, binding, etc...
+        public static readonly DependencyProperty RowsMinCountProperty =
+            DependencyProperty.RegisterAttached("RowsMinCount", typeof(int), typeof(AutoGrid),
+                new FrameworkPropertyMetadata(1,
+                    FrameworkPropertyMetadataOptions.AffectsMeasure | FrameworkPropertyMetadataOptions.AffectsArrange,
+                    new PropertyChangedCallback(RowsChanged)));
+
+        // Using a DependencyProperty as the backing store for RowsSharedSizeGroups.  This enables animation, styling, binding, etc...
+        public static readonly DependencyProperty RowsSharedSizeGroupsProperty =
+            DependencyProperty.RegisterAttached("RowsSharedSizeGroups", typeof(string), typeof(AutoGrid),
+                new FrameworkPropertyMetadata(string.Empty,
+                    FrameworkPropertyMetadataOptions.AffectsMeasure | FrameworkPropertyMetadataOptions.AffectsArrange,
+                    new PropertyChangedCallback(RowsChanged)));
+
+        private bool shouldReIndex = true;
         private int rowOrColumnCount;
 
         #region Overrides
@@ -609,7 +634,7 @@ namespace CodingSeb.Layouts
         /// </returns>
         protected override Size MeasureOverride(Size constraint)
         {
-            this.PerformLayout();
+            PerformLayout();
             return base.MeasureOverride(constraint);
         }
 
@@ -621,7 +646,7 @@ namespace CodingSeb.Layouts
         /// <param name="visualRemoved">Identifies the visual child that's removed.</param>
         protected override void OnVisualChildrenChanged(DependencyObject visualAdded, DependencyObject visualRemoved)
         {
-            shouldReindex = true;
+            shouldReIndex = true;
             base.OnVisualChildrenChanged(visualAdded, visualRemoved);
         }
 

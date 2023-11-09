@@ -10,9 +10,8 @@
     <RepositoryUrl>https://github.com/codingseb/Layouts</RepositoryUrl>
     <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
     <Company />
-    <Version>1.0.2</Version>
-    <PackageReleaseNotes>* Add Management for RowsMinCount, ColumnsMinCount, RowsSharedSizeGroups
- and ColumnsSharedSizeGroups</PackageReleaseNotes>
+    <Version>1.0.3</Version>
+    <PackageReleaseNotes>* fix-AutoGrid RowsMinCount when Orientation is Vertical</PackageReleaseNotes>
   </PropertyGroup>
 
   <ItemGroup>

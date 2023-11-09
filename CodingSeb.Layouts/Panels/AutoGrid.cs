@@ -400,7 +400,7 @@ namespace CodingSeb.Layouts
 
                 if (IsAutoIndexing)
                 {
-                    rowOrColumnCount = (ColumnDefinitions.Count != 0) ? ColumnDefinitions.Count : RowDefinitions.Count;
+                    rowOrColumnCount = (isVertical) ? ColumnDefinitions.Count : RowDefinitions.Count;
                     if (rowOrColumnCount == 0) rowOrColumnCount = 1;
 
                     int cellCount = 0;
@@ -410,11 +410,11 @@ namespace CodingSeb.Layouts
                         {
                             continue;
                         }
-                        cellCount += (ColumnDefinitions.Count != 0) ? GetColumnSpan(child) : GetRowSpan(child);
+                        cellCount += (ColumnDefinitions.Count != 1) ? GetColumnSpan(child) : GetRowSpan(child);
                     }
 
                     //  Update the number of rows/columns
-                    if (ColumnDefinitions.Count != 0)
+                    if (!isVertical)
                     {
                         var newRowCount = (int)Math.Ceiling(cellCount / (double)rowOrColumnCount);
                         while (RowDefinitions.Count < newRowCount)
@@ -464,7 +464,7 @@ namespace CodingSeb.Layouts
 
                         if (!isVertical) // horizontal (default)
                         {
-                            var rowIndex = cellPosition / ColumnDefinitions.Count;
+                            var rowIndex = cellPosition / Math.Max(ColumnDefinitions.Count, 1);
                             SetRow(child, rowIndex);
 
                             var columnIndex = cellPosition % ColumnDefinitions.Count;

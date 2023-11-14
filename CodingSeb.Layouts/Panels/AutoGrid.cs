@@ -400,7 +400,7 @@ namespace CodingSeb.Layouts
 
                 if (IsAutoIndexing)
                 {
-                    rowOrColumnCount = (isVertical) ? ColumnDefinitions.Count : RowDefinitions.Count;
+                    rowOrColumnCount = (!isVertical) ? ColumnDefinitions.Count : RowDefinitions.Count;
                     if (rowOrColumnCount == 0) rowOrColumnCount = 1;
 
                     int cellCount = 0;
